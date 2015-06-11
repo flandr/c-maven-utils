@@ -60,6 +60,9 @@ int mv_build(struct maven_version *);
 /** @return the qualifier, or NULL. */
 const char* mv_qualifier(struct maven_version *);
 
+/** @return -1, 0, 1 for a < b, a == b, a > b, respectively. */
+int mv_compare(const struct maven_version *a, const struct maven_version *b);
+
 #ifdef __cplusplus
 }
 #endif

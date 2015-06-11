@@ -14,6 +14,7 @@ set(c-maven-utils_SHARED_LIBRARY
 
 # Source translation units
 set(libmaven_utils_SRCS
+    comparable-version.c
     maven-version.c
 )
 

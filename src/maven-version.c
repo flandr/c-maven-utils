@@ -24,11 +24,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "comparable-version.h"
+
 struct maven_version {
     int major;
     int minor;
     int incremental;
     int build;
+    struct comparable_version *comparable;
     char qualifier[0];
 };
 
@@ -186,10 +189,13 @@ struct maven_version* mv_parse(const char *version) {
         memcpy(ret->qualifier, qualifier, strlen(qualifier));
     }
 
+    ret->comparable = mv_internal_parse_comparable(version);
+
     return ret;
 }
 
 void mv_free(struct maven_version *version) {
+    mv_internal_free_comparable(version->comparable);
     free(version);
 }
 
@@ -211,4 +217,8 @@ int mv_build(struct maven_version *version) {
 
 const char* mv_qualifier(struct maven_version *version) {
     return version->qualifier;
+}
+
+int mv_compare(const struct maven_version *a, const struct maven_version *b) {
+    return mv_internal_compare(a->comparable, b->comparable);
 }

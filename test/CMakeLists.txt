@@ -15,4 +15,5 @@ add_executable(test-driver
 target_link_libraries(test-driver
     gtest
     maven_utils
+    pthread
 )
