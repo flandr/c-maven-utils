@@ -26,5 +26,10 @@ IF(APPLE)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 ENDIF(APPLE)
 
+# Add third-party dependencies
+include(ExternalProject)
+include(External_gtest)
+
 # Recurse
 add_subdirectory(src)
+add_subdirectory(test)
