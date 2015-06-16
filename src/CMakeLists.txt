@@ -36,7 +36,7 @@ install(TARGETS
 install(EXPORT c-maven-utils-targets DESTINATION lib)
 
 install(DIRECTORY
-    ${CMAKE_SOURCE_DIR}/c-maven-utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/c-maven-utils
     DESTINATION include
     FILES_MATCHING PATTERN "*.h"
 )
