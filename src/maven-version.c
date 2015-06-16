@@ -20,6 +20,7 @@
 
 #include "c-maven-utils/maven-version.h"
 
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,21 +63,7 @@ static struct parsed_int parse_int(const char *str, int base) {
 }
 
 static int starts_with_digit(const char *str) {
-    switch (*str) {
-    case '0':
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':
-        return 1;
-    default:
-        return 0;
-    }
+    return isdigit(*str);
 }
 
 /*

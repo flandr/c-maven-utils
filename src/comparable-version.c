@@ -21,6 +21,7 @@
 #include "comparable-version.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -314,10 +315,6 @@ static struct item_string* mk_item_string(const char *str, size_t size,
     return ret;
 }
 
-static int is_digit_p(char c) {
-    return c >= '0' && c <= '9';
-}
-
 static struct item* parse_item(int is_digit, const char *buf, size_t size) {
     if (is_digit) {
         return (struct item*) mk_item_integer(strtol(buf, NULL, 10));
@@ -480,7 +477,7 @@ struct comparable_version* mv_internal_parse_comparable(const char *orig) {
             item_list_add(list, (struct item*) newlist);
             list = newlist;
             stack_push(&lists, list);
-        } else if (is_digit_p(*cur)) {
+        } else if (isdigit(*cur)) {
             if (!is_digit && i > start_index) {
                 item_list_add(list, (struct item*) mk_item_string(
                     version + start_index, i - start_index,
