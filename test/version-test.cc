@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include "c-maven-utils/cpp/maven-version.h"
 #include "c-maven-utils/maven-version.h"
 
 TEST(VersionTest, BasicParsing) {
@@ -177,4 +178,11 @@ TEST(VersionTest, Comparison) {
 
     checkVersionsOrder( "2.0.1", "2.0.1-123" );
     checkVersionsOrder( "2.0.1-xyz", "2.0.1-123" );
+}
+
+TEST(VersionTest, CppComparison) {
+    mvn::Version v1("1.0");
+    mvn::Version v2("2.0");
+    ASSERT_LT(v1, v2);
+    ASSERT_EQ(v1, v1);
 }
