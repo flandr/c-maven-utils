@@ -21,6 +21,7 @@
 #include "comparable-version.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -119,6 +120,7 @@ struct item_integer {
 struct item_string {
     struct item common;
     char *value;
+    char *comparable_qualifier;
 };
 
 struct comparable_version {
@@ -136,6 +138,12 @@ static void free_item_list(struct item_list *list) {
     free(list);
 }
 
+static void free_item_string(struct item_string *string) {
+    free(string->value);
+    free(string->comparable_qualifier);
+    free(string);
+}
+
 static void free_item(struct item *item) {
     assert(list_empty(&item->head));
 
@@ -144,8 +152,7 @@ static void free_item(struct item *item) {
         free((struct item_integer*) item);
         break;
     case STRING_ITEM:
-        free(((struct item_string*) item)->value);
-        free((struct item_string*) item);
+        free_item_string((struct item_string*) item);
         break;
     case LIST_ITEM:
         /* I feel pretty okay about this recursion. */
@@ -154,26 +161,87 @@ static void free_item(struct item *item) {
     }
 }
 
+struct qualifier {
+    const char *name;
+    int index;
+};
+
+struct qualifier qualifiers[] = {
+    {"", 5},
+    {"alpha", 0},
+    {"beta", 1},
+    {"milestone", 2},
+    {"rc", 3},
+    {"snapshot", 4},
+    {"sp", 6}
+};
+
+const char kReleaseVersionIndexString[] = "5";
+
+static int qualifier_index(const char *name) {
+    const int k_max = 6;
+
+    int max = 6;
+    int min = 0;
+
+    while (min <= max) {
+        int cur = min + (max - min) / 2;
+        int cmp = strcmp(name, qualifiers[cur].name);
+        if (cmp == 0) {
+            return qualifiers[cur].index;
+        }
+
+        if (cmp < 0) {
+            max = cur - 1;
+        } else {
+            min = cur + 1;
+        }
+    }
+
+    return -1;
+}
+
 static int is_null(struct item *item) {
     switch (item->type) {
     case INTEGER_ITEM:
         return ((struct item_integer*) item)->value == 0;
     case STRING_ITEM:
-        /* TODO: normalization and order of qualifiers. */
-        return 0;
+        return 0 == strcmp(((struct item_string*) item)->comparable_qualifier,
+            kReleaseVersionIndexString);
     case LIST_ITEM:
         return list_empty(&((struct item_list*) item)->children);
     }
 }
 
+static struct item* item_list_prev(struct item_list *list, struct item *cur) {
+    if (list_empty(&list->children)) {
+        return NULL;
+    }
+
+    if (!cur) {
+        return (struct item*) list->children.prev;
+    }
+
+    if (cur->head.prev == &list->children) {
+        return NULL;
+    }
+
+    return (struct item*) cur->head.prev;
+}
+
+static void print_item(struct item *item, int first);
 static void normalize_list_item(struct item_list *list) {
-    while (!list_empty(&list->children)) {
-        struct item *item = (struct item*) list->children.prev;
-        if (!is_null(item)) {
+    struct item *child = item_list_prev(list, NULL);
+    while (child) {
+        if (is_null(child)) {
+            list_del(&child->head);
+            free_item(child);
+            child = item_list_prev(list, NULL);
+        } else if (child->type != LIST_ITEM) {
             break;
+        } else {
+            child = item_list_prev(list, child);
         }
-        list_del(&item->head);
-        free_item(item);
     }
 }
 
@@ -200,11 +268,49 @@ static struct item_integer* mk_item_integer(int value) {
     return ret;
 }
 
-static struct item_string* mk_item_string(const char *str, size_t size) {
-    /* TODO: canonicalization of alpha/beta/milestone and other aliases */
+static char* mk_comparable_qualifier(const char *str) {
+    int idx = qualifier_index(str);
+    if (idx == -1) {
+        size_t size = strlen(str) + 3;
+        char *ret = (char *) malloc(size);
+        snprintf(ret, size, "%d-%s", 7, str);
+        return ret;
+    }
+    char *ret = (char *) malloc(2);
+    snprintf(ret, 2, "%d", idx);
+    return ret;
+}
+
+static struct item_string* mk_item_string(const char *str, size_t size,
+        int followed_by_digit) {
     struct item_string *ret = (struct item_string*) malloc(sizeof(*ret));
     init_item(&ret->common, STRING_ITEM);
-    ret->value = strndup(str, size);
+
+    if (followed_by_digit && size == 1) {
+        switch (*str) {
+        case 'a':
+            ret->value = strdup("alpha");
+            break;
+        case 'b':
+            ret->value = strdup("beta");
+            break;
+        case 'm':
+            ret->value = strdup("milestone");
+            break;
+        default:
+            ret->value = strndup(str, size);
+            break;
+        }
+    } else if (!strncmp(str, "ga", size)) {
+        ret->value = strdup("");
+    } else if (!strncmp(str, "final", size)) {
+        ret->value = strdup("");
+    } else if (!strncmp(str, "cr", size)) {
+        ret->value = strdup("rc");
+    } else {
+        ret->value = strndup(str, size);
+    }
+    ret->comparable_qualifier = mk_comparable_qualifier(ret->value);
     return ret;
 }
 
@@ -216,8 +322,7 @@ static struct item* parse_item(int is_digit, const char *buf, size_t size) {
     if (is_digit) {
         return (struct item*) mk_item_integer(strtol(buf, NULL, 10));
     }
-    /* TODO: should not apply following-digit normalization */
-    return (struct item*) mk_item_string(buf, size);
+    return (struct item*) mk_item_string(buf, size, /*followed by digit=*/ 0);
 }
 
 static int compare_int(int a, int b) {
@@ -246,16 +351,15 @@ static int compare_item_integer(struct item_integer *a, struct item *b) {
 
 static int compare_item_string(struct item_string *a, struct item *b) {
     if (!b) {
-        /* TODO: compare self to release version :P */
-        return 0;
+        return strcmp(a->comparable_qualifier, kReleaseVersionIndexString);
     }
 
     switch (b->type) {
     case INTEGER_ITEM:
         return -1;
     case STRING_ITEM:
-        /* TODO: qualifier comparison :( */
-        return strcmp(a->value, ((struct item_string*) b)->value);
+        return strcmp(a->comparable_qualifier,
+            ((struct item_string*) b)->comparable_qualifier);
     case LIST_ITEM:
         return -1;
     }
@@ -333,9 +437,16 @@ static int compare_item(struct item *a, struct item *b) {
     }
 }
 
-struct comparable_version* mv_internal_parse_comparable(const char *version) {
+struct comparable_version* mv_internal_parse_comparable(const char *orig) {
     struct stack lists; /* For post-parse normalization */
     stack_init(&lists);
+
+    char *version = strdup(orig);
+    size_t len = strlen(version);
+    int i;
+    for (i = 0; i < len; ++i) {
+        version[i] = tolower(version[i]);
+    }
 
     struct comparable_version *comparable =
         (struct comparable_version*) malloc(sizeof(*comparable));
@@ -347,7 +458,6 @@ struct comparable_version* mv_internal_parse_comparable(const char *version) {
     int is_digit = 0;
     int start_index = 0;
     const char *cur = version;
-    int i;
     for (i = 0; *cur != '\0'; ++i, ++cur) {
         if (*cur == '.') {
             if (i == start_index) {
@@ -373,7 +483,8 @@ struct comparable_version* mv_internal_parse_comparable(const char *version) {
         } else if (is_digit_p(*cur)) {
             if (!is_digit && i > start_index) {
                 item_list_add(list, (struct item*) mk_item_string(
-                    version + start_index, i - start_index));
+                    version + start_index, i - start_index,
+                    /*followed by digit=*/ 1));
                 start_index = i;
 
                 struct item_list *newlist = mk_item_list();
@@ -397,15 +508,17 @@ struct comparable_version* mv_internal_parse_comparable(const char *version) {
         }
     }
 
-    if (start_index < strlen(version)) {
+    if (start_index < len) {
         item_list_add(list, parse_item(is_digit, version + start_index,
-            strlen(version) - start_index));
+            len - start_index));
     }
 
     while (!stack_empty(&lists)) {
         list = (struct item_list*) stack_pop(&lists);
         normalize_list_item(list);
     }
+
+    free(version);
 
     return comparable;
 }

@@ -69,8 +69,8 @@ TEST(VersionTest, BasicComparison) {
     auto *v1 = mv_parse(v1str);
     auto *v2 = mv_parse(v2str);
     int cmp = mv_compare(v1, v2);
-    free(v1);
-    free(v2);
+    mv_free(v1);
+    mv_free(v2);
 
     if (!cmp) {
         return ::testing::AssertionSuccess();
@@ -84,8 +84,8 @@ TEST(VersionTest, BasicComparison) {
     auto *v1 = mv_parse(v1str);
     auto *v2 = mv_parse(v2str);
     int cmp = mv_compare(v1, v2);
-    free(v1);
-    free(v2);
+    mv_free(v1);
+    mv_free(v2);
 
     if (cmp < 0) {
         return ::testing::AssertionSuccess();

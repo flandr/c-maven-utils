@@ -17,3 +17,11 @@ target_link_libraries(test-driver
     maven_utils
     pthread
 )
+
+add_executable(compare
+    compare.c
+)
+
+target_link_libraries(compare
+    maven_utils
+)
