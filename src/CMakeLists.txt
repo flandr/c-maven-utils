@@ -12,19 +12,21 @@ set(c-maven-utils_SHARED_LIBRARY
     CACHE INTERNAL "c-maven-utils shared library"
 )
 
+# Static has a different name, for Windows
+set(c-maven-utils_STATIC_LIBRARY
+    maven_utils_s
+    CACHE INTERNAL "c-maven-utils static library"
+)
+
 # Source translation units
 set(libmaven_utils_SRCS
     comparable-version.c
     maven-version.c
 )
 
-# Main library targets
+# Main library target
 add_library(${c-maven-utils_SHARED_LIBRARY} SHARED ${libmaven_utils_SRCS})
-
-# Link dependencies
-#target_link_libraries(${c-maven-utils_SHARED_LIBRARY}
-#${EXTRA_LIBS}
-#)
+add_library(${c-maven-utils_STATIC_LIBRARY} STATIC ${libmaven_utils_SRCS})
 
 # Installation
 install(TARGETS
