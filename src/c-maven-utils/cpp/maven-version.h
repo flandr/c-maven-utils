@@ -33,6 +33,7 @@ public:
     explicit Version(std::string const& version);
     bool operator<(Version const& o) const;
     bool operator==(Version const& o) const;
+    std::string const& original() const { return orig_; }
 
     struct Deleter {
         void operator()(struct maven_version *v) const {
@@ -41,10 +42,11 @@ public:
     };
 private:
     std::shared_ptr<struct maven_version> version_;
+    std::string orig_;
 };
 
 Version::Version(std::string const& version)
-    : version_(mv_parse(version.c_str()), Deleter()) { }
+    : version_(mv_parse(version.c_str()), Deleter()), orig_(version) { }
 
 bool Version::operator<(Version const& o) const {
     return mv_compare(version_.get(), o.version_.get()) < 0;
