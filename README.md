@@ -5,6 +5,17 @@ Sometimes you have to interact with [Maven](https://maven.apache.org/) even when
 you are not working with a Java project _per se_. This can be unfortunate, but
 what can you do? Use this library!
 
+## Building and installing
+
+[CMake](http://www.cmake.org/)-based, so:
+
+```
+mkdir build
+cd build
+cmake ..
+make && make install
+```
+
 ## Comparing versions
 
 Maven has a [very complicated
