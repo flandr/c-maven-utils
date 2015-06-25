@@ -10,7 +10,7 @@ before_install:
 install:
   - sudo apt-get install -yqq g++-4.8 gcc-4.8 valgrind
   - export CXX="g++-4.8"
-  - export CC="g++-4.8"
+  - export CC="gcc-4.8"
 
 script: mkdir build && cd build && cmake .. && make && ./test/test-driver &&
     valgrind --error-exitcode=1 ./test/test-driver
